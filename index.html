@@ -208,8 +208,20 @@
             let newX = player.x + Math.cos(player.rot) * moveStep;	// calculate new player position with simple trigonometry
             let newY = player.y + Math.sin(player.rot) * moveStep;
 
+            if (isBlocking(newX, newY)) {
+                return;
+            }
+
             player.x = newX; // set new position
             player.y = newY;
+        }
+
+        isBlocking = (x, y) => {
+
+            if (y < 0 || y > mapHeight || x < 0 || x > mapWidth)
+                return true;
+
+            return (map[Math.floor(y)][Math.floor(x)] != 0);
         }
 
     </script>

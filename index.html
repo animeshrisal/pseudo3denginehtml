@@ -144,7 +144,7 @@
 
             objectCtx.strokeStyle = "rgba(0,100,0,0.3)";
             objectCtx.lineWidth = 0.5;
-            object.beginPath();
+            objectCtx.beginPath();
             objectCtx.moveTo(player.x * miniMapScale, player.y * miniMapScale);
             objectCtx.lineTo(
                 rayX * miniMapScale,
@@ -177,6 +177,10 @@
             let dX = right ? 1 : -1;
             let dY = dX * slope;
 
+            let x = right ? Math.ceil(player.x) : Math.floor(player.x);	// starting horizontal position, at one of the edges of the current map block
+            let y = player.y + (x - player.x) * slope;			// starting vertical position. We add the small horizontal step we just made, multiplied by the slope.
+
+
             while (x >= 0 && x < mapHeight && y >= 0 && y < mapHeight) {
                 let wallX = Math.floor(x + (right ? 0 : -1));
                 let wallY = Math.floor(y);
@@ -199,11 +203,11 @@
                 y += dY;
             }
 
-            let slope = angleCos / angleSin;
-            let dY = up ? -1 : 1;
+            slope = angleCos / angleSin;
+            dY = up ? -1 : 1;
             dX = dY * slope;
-            let y = up ? Math.floor(player.y) : Math.ceil(player.y);
-            let x = player.x + (y - player.y) * slope;
+            y = up ? Math.floor(player.y) : Math.ceil(player.y);
+            x = player.x + (y - player.y) * slope;
 
             while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
                 let wallY = Math.floor(y + (up ? -1 : 0));
@@ -234,6 +238,19 @@
 
         castRays = () => {
             let stripIdx = 0;
+
+            for (let i = 0; i < numRays; i++) {
+                let rayScreenPos = (-numRays / 2 + i) * stripWidth;
+                let rayViewDist = Math.sqrt(rayScreenPos * rayScreenPos + viewDist * viewDist);
+                let rayAngle = Math.asin(rayScreenPos / rayViewDist);
+
+                castSingleRay(
+                    player.rot + rayAngle, 	// add the players viewing direction to get the angle in world space
+                    stripIdx++
+                );
+            }
+
+
         }
 
 
@@ -267,6 +284,7 @@
 
         gameCycle = () => {
             move();
+            castRays();
             updateMiniMap();
             setTimeout(gameCycle, 1000 / 30);
         }

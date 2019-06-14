@@ -31,7 +31,7 @@
         let $ = function (id) { return document.getElementById(id); };
         let dc = function (tag) { return document.createElement(tag); };
 
-        var map = [
+        let map = [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -63,6 +63,9 @@
         let mapHeight = 0;
         let miniMapScale = 8;
 
+        let screenWidth = 320;
+
+
         let player = {
             x: 16,
             y: 10,
@@ -72,6 +75,16 @@
             moveSpeed: 0.18,
             rotSpeed: 6
         }
+
+        let stripWidth = 4;
+        let fov = 60 * Math.PI / 180;
+
+        let numRays = Math.ceil(screenWidth / stripWidth);
+        let fovHalf = fov / 2;
+
+        let viewDist = (screenWidth / 2) / Math.tan((fov / 2));
+
+        let twoPI = Math.PI * 2;
 
 
         init = () => {
@@ -143,8 +156,87 @@
         }
 
         castSingleRay = (rayAngle, stripIdx) => {
+            rayAngle %= twoPI;
+            if (rayAngle < 0) rayAngle += twoPI;
+
+            let right = (rayAngle > twoPI * 0.75 || rayAngle < twoPI * 0.25);
+            let up = (rayAngle < 0 || rayAngle > Math.PI);
+
+            let angleSin = Math.sin(rayAngle);
+            let angleCos = Math.cos(rayAngle);
+
+            let dist = 0;
+            let xHit = 0;
+            let yHit = 0;
+
+            let textureX;
+            let wallX;
+            let wallY;
+
+            let slope = angleSin / angleCos;
+            let dX = right ? 1 : -1;
+            let dY = dX * slope;
+
+            while (x >= 0 && x < mapHeight && y >= 0 && y < mapHeight) {
+                let wallX = Math.floor(x + (right ? 0 : -1));
+                let wallY = Math.floor(y);
+
+                if (map[wallY][wallX] > 0) {
+                    let distX = x - player.x;
+                    let distY = y - player.y;
+                    dist = distX * distX + distY * distY;
+
+                    textureX = y % 1;
+                    if (!right) textureX = 1 - textureX;
+
+                    xHit = x;
+                    yHit = y;
+
+                    break;
+                }
+
+                x += dX;
+                y += dY;
+            }
+
+            let slope = angleCos / angleSin;
+            let dY = up ? -1 : 1;
+            dX = dY * slope;
+            let y = up ? Math.floor(player.y) : Math.ceil(player.y);
+            let x = player.x + (y - player.y) * slope;
+
+            while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
+                let wallY = Math.floor(y + (up ? -1 : 0));
+                let wallX = Math.floor(x);
+                if (map[wallY][wallX] > 0) {
+                    let distX = x - player.x;
+                    let distY = y - player.y;
+                    let blockDist = distX * distX + distY * distY;
+                    if (!dist || blockDist < dist) {
+                        dist = blockDist;
+                        xHit = x;
+                        yHit = y;
+                        textureX = x % 1;
+                        if (up) textureX = 1 - textureX;
+                    }
+                    break;
+                }
+                x += dX;
+                y += dY;
+            }
+
+            if (dist) {
+                drawRay(xHit, yHit);
+            }
+
 
         }
+
+        castRays = () => {
+            let stripIdx = 0;
+        }
+
+
 
 
 
@@ -183,8 +275,8 @@
             // draw the topdown view minimap
 
             let miniMap = $("minimap");
-            var miniMapCtr = $("minimapcontainer");		// the container div element
-            var miniMapObjects = $("minimapobjects");
+            let miniMapCtr = $("minimapcontainer");		// the container div element
+            let miniMapObjects = $("minimapobjects");
 
             miniMap.width = mapWidth * miniMapScale;	// resize the internal canvas dimensions 
             miniMap.height = mapHeight * miniMapScale;
@@ -197,13 +289,13 @@
             miniMap.style.height = miniMapObjects.style.height = miniMapCtr.style.height = h;
 
 
-            var ctx = miniMap.getContext("2d");
+            let ctx = miniMap.getContext("2d");
 
             // loop through all blocks on the map
-            for (var y = 0; y < mapHeight; y++) {
-                for (var x = 0; x < mapWidth; x++) {
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
 
-                    var wall = map[y][x];
+                    let wall = map[y][x];
 
                     if (wall > 0) { // if there is a wall block at this (x,y) ...
 

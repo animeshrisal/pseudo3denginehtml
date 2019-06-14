@@ -284,8 +284,9 @@
 
         gameCycle = () => {
             move();
-            castRays();
+
             updateMiniMap();
+            castRays();
             setTimeout(gameCycle, 1000 / 30);
         }
 
